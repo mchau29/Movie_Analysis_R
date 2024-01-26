@@ -1,0 +1,517 @@
+---
+title: "MOVIES IN THE U.S - PROFIT AND REVENUE ANALYSIS"
+author: "Minh K. Chau"
+date: "`r Sys.Date()`"
+output: 
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# About this project
+
+In this project, I used the Movies data, provided by a course in Google Data Analytics certificate on Coursera. This data table includes movies titles, director, five cast members, released years, budgets, and revenues released from 2012 - 2016. I address the following questions in my analysis:
+
+-   What are the top 10 directors and cast members for movies that generated the most revenue, from 2012 - 2016?
+
+-   What is the most profitable genre, by year and of all time?
+
+-   Can we predict revenue just from budget for a particular movie?
+
+## LIBRARY & Read-in Files
+
+```{r,message=FALSE,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(skimr)
+library(ggpubr)        # customization ggplot2 & ggarrange
+options(digits = 3)
+movies <- read.csv("movies.csv")
+```
+
+# Data At first glance
+
+The following code chunks will perform the following:
+
+-   Convert all revenues and budgets into millions of U.S. Dollars
+
+-   Create a column for Profit (in millions of U.S. Dollars), which is calculated by: (revenue - profit)/1,000,000
+
+-   Check for unique values in:
+
+    -   year: 2012 - 2016
+
+    -   genres: multiple
+
+```{r}
+movies <- movies %>%
+  mutate(revenue.mils = revenue/1000000,
+         budget.mils = budget/1000000,
+         profit.mils = (revenue - budget)/1000000)
+skim(movies)
+```
+
+At first glance, we have 508 rows with 15 columns. There are no missing values. No Data Cleaning process is necessary.
+
+# Top 10 Director and First Cast Member
+
+```{r}
+movies %>%
+  select(director,
+         revenue.mils) %>%
+  group_by(director) %>%
+  summarize(sum = sum(revenue.mils)) %>%
+  arrange(desc(sum)) %>%
+  head(10) 
+```
+
+The top 10 directors whose movies received the highest revenues returned are shown by the tibbit above. How about Cast Member?
+
+```{r}
+movies %>%
+  select(cast1,
+         revenue.mils) %>%
+  group_by(cast1) %>%
+  summarize(sum = sum(revenue.mils)) %>%
+  arrange(desc(sum)) %>%
+  head(10) 
+```
+
+The table above showed the top 10 actors/actresses whose movies that were casting on generated the highest sum of revenues.
+
+# What genre generates the most profit for each year in 2012 - 2016?
+
+```{r,warning=FALSE,message=FALSE}
+movies %>%
+  select(year,
+         genre,
+         profit.mils) %>%
+  group_by(year,genre) %>%
+  summarize(sum = sum(profit.mils)) %>%
+  arrange(desc(sum)) %>%
+  head(5)
+```
+
+**Action movies** generated the most profit for: 2012, 2013, 2014, 2016. So the next question is: ***Does that mean Action moves generate the most profit per movie released?***
+
+```{r,warning=FALSE,message=FALSE}
+movies %>%
+  select(year,
+         genre,
+         profit.mils) %>%
+  group_by(year,genre) %>%
+  summarize(average = mean(profit.mils)) %>%
+  arrange(desc(average)) %>%
+  head(5)
+```
+
+According to the output, **Action movies do NOT generate the most profit per movie released in any year**.
+
+Even though action movies generated the most profits for each year from 2012 - 2016 (except 2015), each action movie does not generate the most profit on average, in comparing to other genres.
+
+To explain this contradiction, let's look at the number of movies released by year for each genre.
+
+```{r,message=FALSE,warning=FALSE}
+movies %>%
+  select(year,
+         genre,
+         title) %>%
+  group_by(year,genre) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(5)
+```
+
+Based on this number, we can see that **Action movies stand in the top 5 in terms of number released (i.e., 2012, 2013, 2014)**. How about In terms of budget and Revenue?
+
+```{r,message=FALSE,warning=FALSE}
+movies %>%
+  select(year,
+         genre,
+         budget.mils) %>%
+  group_by(year,genre) %>%
+  summarize(sum = sum(budget.mils)) %>%
+  arrange(desc(sum)) %>%
+  head(5)
+```
+
+*From 2012 - 2016, action movies received the most budget.*
+
+```{r,message=FALSE,warning=FALSE}
+movies %>%
+  select(year,
+         genre,
+         revenue.mils) %>%
+  group_by(year,genre) %>%
+  summarize(sum = sum(revenue.mils)) %>%
+  arrange(desc(sum)) %>%
+  head(5)
+```
+
+*Except for 2015, Action movies made the most revenues.*
+
+so let's look at this trend as a whole.
+
+***From 2012 - 2016, what genres generate the most revenues, receive the most budget, release the most movies, generate the most net profit, and average profit/movie?***
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE}
+rev_all <- movies %>%
+  select(genre,
+         revenue.mils) %>%
+  group_by(genre) %>%
+  summarize(sum_rev = sum(revenue.mils)) %>%
+  arrange(desc(sum_rev)) %>%
+  head(5) %>%
+  data.frame()         
+
+bud_all <- movies %>%
+  select(genre,
+         budget.mils) %>%
+  group_by(genre) %>%
+  summarize(sum_bud = sum(budget.mils)) %>%
+  arrange(desc(sum_bud)) %>%
+  head(5) %>%
+  data.frame()   # Action movies require the most budget 
+
+count_all <- movies %>%
+  select(genre) %>%
+  group_by(genre) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(5) %>%
+  data.frame()              # Action movies were released the most 
+
+profit_all <- movies %>%
+  select(genre,
+         profit.mils) %>%
+  group_by(genre) %>% 
+  summarize(sum_pro = sum(profit.mils)) %>%
+  arrange(desc(sum_pro)) %>%
+  head(5) %>%
+  data.frame()             # Action movies generate most profits 
+
+average_all <- movies %>%
+  select(genre,
+         profit.mils) %>%
+  group_by(genre) %>%
+  summarize(mean_profit = mean(profit.mils)) %>%
+  arrange(desc(mean_profit)) %>%
+  head(5) %>%
+  data.frame()            
+# Action movies not in top 5 in terms of average profit
+# the most profitable genre of all time would be Adventure and family movies. 
+
+#---------------------------------------------------------------
+# PLOTS
+#---------------------------------------------------------------
+# revenue plot
+rev_plot <- ggplot(data = rev_all,
+               aes(x = genre,
+                   y= sum_rev,
+                   fill = genre)) +               
+  geom_bar(mapping = aes(x=genre,     
+                         y=sum_rev),
+           stat = "identity",
+           width = 0.5,
+           position = "dodge",) +
+  ylab("Revenues (in milions)") +
+  xlab("Movie Genres") + 
+  ggtitle("Revenue") +
+  theme_minimal() +
+  coord_flip()
+
+# budget plot
+bud_plot <- ggplot(data = bud_all,
+       aes(x = genre,
+           y= sum_bud,
+           fill = genre))+               
+  geom_bar(mapping = aes(x=genre,     
+                         y= sum_bud),
+           stat = "identity",
+           width = 0.5,
+           position = "dodge",) +
+  ylab("Budget (in milions)") +
+  xlab("Movie Genres") + 
+  ggtitle("Budget") + 
+  theme_minimal() +
+  coord_flip()
+
+# Count plot 
+count_plot <- ggplot(data = count_all,
+                   aes(x = genre,
+                       y= count,
+                       fill = genre))+               
+  geom_bar(mapping = aes(x=genre,     
+                         y= count),
+           stat = "identity",
+           width = 0.5,
+           position = "dodge",) +
+  ylab("Number of Movies Released") +
+  xlab("Movie Genres") + 
+  ggtitle("Movies Released") + 
+  theme_minimal() +
+  coord_flip()
+
+# Profit plot
+profit_plot <- ggplot(data = profit_all,
+                   aes(x = genre,
+                       y= sum_pro,
+                       fill = genre))+               
+  geom_bar(mapping = aes(x=genre,     
+                         y= sum_pro),
+           stat = "identity",
+           width = 0.5,
+           position = "dodge",) +
+  ylab("Profit (in milions)") +
+  xlab("Movie Genres") + 
+  ggtitle("Profit") + 
+  theme_minimal() +
+  coord_flip()
+
+# Average plot 
+average_plot <- ggplot(data = average_all,
+                   aes(x = genre,
+                       y= mean_profit,
+                       fill = genre))+               
+  geom_bar(mapping = aes(x=genre,     
+                         y= mean_profit),
+           stat = "identity",
+           width = 0.5,
+           position = "dodge",) +
+  ylab("Mean Profits (in milions)") +
+  xlab("Movie Genres") + 
+  ggtitle("Mean Profits") + 
+  theme_minimal() +
+  coord_flip()
+
+genre_plot <- ggarrange(rev_plot,
+          bud_plot,
+          count_plot,
+          profit_plot,
+          average_plot,
+          ncol = 2,nrow = 3,
+          align = "hv",
+          font.label = list(size = 10,
+                            color = "black",
+                            face = "bold",
+                            family = NULL,
+                            position = "top"))
+annotate_figure(genre_plot, top = text_grob("
+Top Five Movie Genre by Categories,from 2012 - 2016",
+                           color = "black", face = "bold", size = 14))
+```
+
+**Results**
+
+Action movies do not generate the most profit per movies. But they do generate the most Revenues and tend to be the most popular genre (e.g., with more budgets and revenues).
+
+Let's confirm this finding: ***what are the top 10 movies that generate the most revenues?***
+
+```{r}
+movies %>%
+  select(title,
+         genre,
+         year,
+         revenue.mils) %>%
+  group_by(genre) %>%
+  arrange(desc(revenue.mils)) %>%
+  head(10)
+```
+
+We can see that 5/10 movies with the highest revenues belong to Action movies. This confirm our hypothesis that Action Movies are the most profitable genre.
+
+# Can we predict Revenue based on Budget?
+
+For this question, we can use regression to predict Revenue by Budget for each movies, regardless of genre.
+
+#### Linear Regression of the entire data table (N = 508)
+
+```{r}
+summary(lm(data = movies, revenue.mils~budget.mils))
+```
+
+**Results:** In general, budget significantly predicts revenues, both in million of Dollars, b = 2.83, F(1,506) = 689, p\<.05.
+
+**Interpretation:** for every \$1 million increase in budget, revenue is expected to increase by \$2.83 million.
+
+Now, let's analyzed this by group. We will first create a column that convert budget (in millions) into four subgroup:
+
+-   "\>100": greater than \$100 millions (\>100)
+
+-   "\<100": Between \$100 millions and \$50 millions (\<100)
+
+-   "\<50": between \$50 millions and \$25 millions
+
+-   "\<25": \$25 millions or less
+
+```{r}
+movies <- movies %>%
+  mutate(bud_group = ifelse(budget.mils >100,">100",ifelse(
+    budget.mils <= 100 & budget.mils > 50,"<100",ifelse(
+      budget.mils <=50 & budget.mils >25, "<50","<25"))))
+
+movies %>% 
+  select(bud_group,
+         budget.mils) %>%
+  group_by(bud_group) %>%
+  count()
+```
+
+Because each group has a sample size of greater than 50, I decided that this sample size is sufficient to conduct linear regression analysis. Proceed to analysis.
+
+#### Linear Regression in movies with budget greater than \$100 million (N = 74)
+
+```{r}
+budget100more <- movies %>%
+  filter(budget.mils >100) %>%
+  select(budget.mils,
+         genre,
+         revenue.mils) %>%
+  data.frame()
+summary(lm(data = budget100more, revenue.mils~budget.mils))
+```
+
+**Results:** For movies with budget of greater than \$100 million, budget significantly predicts revenues, both in million of Dollars, b = 2.92, F (1,72) = 25.5, p\<.05.
+
+**Interpretation:** for every \$1 million increase in budget, revenue is expected to increase by \$2.92 millions, for movies with a budget of greater than \$100 millions.
+
+#### Linear Regression in movies with budget between \$50 - \$100 millions (N = 97)
+
+```{r}
+budget100less <- movies %>%
+  filter(budget.mils <=100 & budget.mils >50) %>%
+  select(budget.mils,
+         genre,
+         revenue.mils) %>%
+  arrange(desc(budget.mils)) %>% 
+  data.frame()
+summary(lm(data = budget100less, revenue.mils~budget.mils))
+```
+
+**Results:** For movies with budget of between \$50 - \$100 million, budget does not significantly predicts revenues, both in million of Dollars, p \>.05.
+
+**Interpretation:** There exists no relationship between budgets and revenue returned (in million of dollars) in movies with budget between \$50 - \$100 millions Dollar.
+
+#### Linear Regression in movies with budget between \$25 - \$50 millions (N = 107)
+
+```{r}
+budget50less <- movies %>%
+  filter(budget.mils <= 50 & budget.mils >25) %>%
+  select(budget.mils,
+         genre,
+         revenue.mils) %>%
+  arrange(desc(budget.mils)) %>% 
+  data.frame()
+summary(lm(data = budget50less, revenue.mils~budget.mils))
+```
+
+**Results:** For movies with budget of between \$25 - \$50 million, budget significantly predicts revenues, both in million of Dollars, b = 3.17, F(1,105) = 8.39, p \>.05.
+
+**Interpretation:** for every \$1 million increase in budget, revenue is expected to increase by \$3.17 millions, for movies with a budget between \$25 - \$50 millions of Dollars.
+
+#### Linear Regression in movies with budget less than \$25 millions (N = 230)
+
+```{r}
+budget25less <- movies %>%
+  filter(budget.mils <= 25) %>%
+  select(budget.mils,
+         genre,
+         revenue.mils) %>%
+  arrange(desc(budget.mils)) %>% 
+  data.frame()
+summary(lm(data = budget25less, revenue.mils~budget.mils))
+```
+
+**Results:** For movies with budget of less than \$25 million, budget significantly predicts revenues, both in million of Dollars, b = 2.12, F(1, 228) = 14.1, p \>.05.
+
+**Interpretation:** for every \$1 million increase in budget, revenue is expected to increase by \$2.11 millions, for movies with a budget less than \$25 millions of Dollars.
+
+#### Put it together
+
+```{r,message=FALSE,echo=FALSE}
+# graphing
+bud100more <- ggplot(data = budget100more,
+                     aes(x = budget.mils,
+                         y = revenue.mils)) + 
+  geom_point(size = 2) +
+  theme_minimal() +
+  geom_smooth(method = lm)+
+  theme_minimal() +
+  ylab("Revenues (in Millions") +
+  xlab("Budgets (in Millions)") +
+  ggtitle("Budget > $100m,
+          y = 1.1 +2.9x")
+
+
+bud100less <- ggplot(data = budget100less,
+                     aes(x = budget.mils,
+                         y = revenue.mils)) + 
+  geom_point(size = 2) +
+  theme_minimal() +
+  geom_smooth(method = lm)+
+  ylab("Revenues (in Millions") +
+  xlab("Budgets (in Millions)") +
+  ggtitle("Budget $50 - $100m (insignificant)")
+
+bud50less <- ggplot(data = budget50less,
+                    aes(x = budget.mils,
+                        y = revenue.mils)) + 
+  geom_point(size = 2) +
+  theme_minimal() +
+  geom_smooth(method = lm)+
+  ylab("Revenues (in Millions") +
+  xlab("Budgets (in Millions)") +
+  ggtitle("Budget $25m - $50m,
+          y = -18 +3.2x")
+
+bud25less <- ggplot(data = budget25less,
+                    aes(x = budget.mils,
+                        y = revenue.mils)) + 
+  geom_point(size = 2) +
+  theme_minimal() +
+  geom_smooth(method = lm)+
+  ylab("Revenues (in Millions") +
+  xlab("Budgets (in Millions)") +
+  ggtitle("Budget < $25m
+          y = 27 +2.1x")
+
+budall <- ggplot(data = movies,
+                 aes(x = budget.mils,
+                     y = revenue.mils)) + 
+  geom_point(size = 2) +
+  theme_minimal() +
+  geom_smooth(method = lm)+
+  ylab("Revenues (in Millions") +
+  xlab("Budgets (in Millions)") +
+  ggtitle("Any Budgets
+          y = 14 +2.8x")
+
+budget_plot <- ggarrange(bud100more,
+                         bud100less,
+                         bud50less,
+                         bud25less,
+                         budall,
+                         ncol = 2,nrow = 3,
+                         widths = c(2,2.25),
+                         align = "hv",
+                         font.label = list(size = 10,
+                                           color = "black",
+                                           face = "bold",
+                                           family = NULL,
+                                           position = "top"))
+
+annotate_figure(budget_plot, top = text_grob("Budget Predicts Revenues (in millions of Dollars),
+                                             for movies released from 2012 - 2016", 
+                                      color = "black", face = "bold", size = 14))
+```
+
+When analyzed by different budget groups, budget significantly predict revenues returned by each movies, across genre, from 2012 - 2016. This regression coefficient does not apply to movies with budget between \$50 - \$100 however.
+
+# TAKE-HOME MESSAGE
+
+-   Action movies generated the most profits and revenues. With lots of budgets, it is the most popular genre.
+
+-   It is best to have a movie with a budget around \$25 - \$50 millions, or \$100 millions or more, for those movies to generate profits.

@@ -1,0 +1,6 @@
+(1) by profits alone, Action is the most profitable genres. 
+(2) on average, Adventure is the most profitable genre, then sci-fi and animation.
+    Action actually does not have that much profit anymore.
+(3) From 2012 - 2016, Action, Comedy, Drama are released significantly more than other genres.
+    the same pattern was observed for their profits => this is a strong indicator that it is not because 
+    these genres generally attract more people, it just because they are released more. 
